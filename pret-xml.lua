@@ -1,21 +1,26 @@
 if not modules then modules = { } end modules ['pret-xml'] = {
     version   = 1.001,
-    comment   = "Time-stamp: <2010-11-14 03:37:48>",
+    comment   = "Time-stamp: <2010-11-14 18:17:07>",
     author    = "Renaud Aubin",
     copyright = "Renaud Aubin",
     license   = "see context related readme file"
 }
 
--- TODO:
--- − Simplify with functors
--- − Improve recurse_attribute (detect invalid, detect =)
--- − Use oxygen xml -like color scheme
--- − Clean up unused variables
+--[[
+TODO:
+− Improve with http://lua-users.org/wiki/SwitchStatement
+− Manage the syntax highlighting of tags like <svg:test> with a different color
+− Parse inner CDATA data to colorize normal xml tag
+− Simplify with functors
+− Improve recurse_attribute (detect invalid, detect =)
+− Use oxygen xml -like color scheme
+− Clean up unused variables
+--]]
 
 local visualizer = buffers.newvisualizer("xml")
 
 -- The colors are configurable by the user.
--- Example: \definecolor[Ccomment][darkblue]
+-- Example: \definecolor[XMLcomment][darkblue]
 local colors = {
    {name = "text",                      color = "black"},
    {name = "comment",                   color = "darkgreen"},
@@ -30,11 +35,11 @@ local colors = {
    {name = "xmlprolog",                 color = "blueviolet"}
 }
 
-
 local utf = unicode.utf8
 local utfcharacters, utfvalues = string.utfcharacters, string.utfvalues
 local utfbyte, utffind = utf.byte, utf.find
 local texwrite = tex.write
+
 
 --local buffers = buffers
 local context = context
@@ -140,7 +145,6 @@ local function color_init()
    end
 end
 
-texio.write_nl("4")
 function visualizer.begin_of_display()
    color_init()
 end
