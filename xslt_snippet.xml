@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xsl:stylesheet version="1.0"
+                xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:xlink="http://www.w3.org/1999/xlink"
+                xmlns:math="http://exslt.org/math">
+  
+  <xsl:output method="xml" indent="yes" encoding="UTF-8" />
+
+  <xsl:template match="/">
+    <svg xmlns:xlink="http://www.w3.org/1999/xlink"
+         xmlns="http://www.w3.org/2000/svg"
+         contentScriptType="text/ecmascript"
+         zoomAndPan="magnify"
+         contentStyleType="text/css"
+         preserveAspectRatio="xMidYMid meet"
+         version="1.0">
+
+      <style type="text/css">
+        <xsl:text disable-output-escaping="yes">&lt;![CDATA[</xsl:text>text {
+        font-family: LucidaSansTypewriter;
+        fill: black;
+        stroke: black;
+        stroke-width: 0.01;
+        text-anchor: middle;
+        }<xsl:text disable-output-escaping="yes">]]&gt;</xsl:text> 
+      </style>
+
+      <defs xmlns="http://www.w3.org/2000/svg">
+        <xsl:apply-templates select="//CONTAINER"/>
+      </defs>
+
+      <xsl:apply-templates select="//IOG"/>
+
+    </svg>
+  </xsl:template>
+
+  [... Définition des patrons ...]
+
+</xsl:stylesheet>
