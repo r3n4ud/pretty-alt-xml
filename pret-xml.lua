@@ -1,6 +1,6 @@
 if not modules then modules = { } end modules ['pret-xml'] = {
     version   = 1.001,
-    comment   = "Time-stamp: <2010-11-14 18:17:07>",
+    comment   = "Time-stamp: <2010-11-14 19:54:58>",
     author    = "Renaud Aubin",
     copyright = "Renaud Aubin",
     license   = "see context related readme file"
@@ -145,12 +145,66 @@ local function color_init()
    end
 end
 
+local buffer = ""
+
+-- lpeg
+local P, S, V, C, R = lpeg.P, lpeg.S, lpeg.V, lpeg.C, lpeg.R
+
+local function prolog(txt)
+   print("prolog",'#'..txt..'#')
+   change_color("xmlprolog")
+   flush_text(txt)
+   finish_color()
+end
+
+local function comment(txt)
+   print("comment",'#'..txt..'#')
+   change_color("comment")
+   flush_text(txt)
+   finish_color()
+end
+
+local function doctype(txt)
+   print("doctype",'#'..txt..'#')
+end
+
+local apos=lpeg.P('"')
+local equal=lpeg.P("=")
+local space=P(" ")
+local space=S(" \t\n\r")
+local letter=R("az", "AZ")
+local namecharstart=letter + '_' + ':'
+local name=namecharstart * (namecharstart + R("09") + P('-'))^0
+
+local comment_open=P("<!--")
+local comment_close=P("-->")
+
+--local doctype=(space^0 * P("<!DOCTYPE")) / doctype
+local comment=(space^0 * comment_open * 
+               (P(1) - comment_close)^0 * comment_close) / comment
+
+local prolog=(space^0 * P("<?xml") *
+           (space^1 * name * equal * apos * (P(1) -apos)^1 * apos )^1 * 
+        space^0 * P("?>")) / prolog
+
+
+local xml=P{
+   [1]=prolog^0 * V(2), --* doctype^0 * V(2),
+   [2]=(comment^1 + P(1)^1)^0,
+}
+
+-- Hooks
 function visualizer.begin_of_display()
    color_init()
 end
 
 visualizer.begin_of_inline = visualizer.begin_of_display
-visualizer.end_of_display = finish_color
+
+function visualizer.end_of_display()
+   finish_color()
+   xml:match(buffer)
+end
+
 visualizer.end_of_inline = visualizer.end_of_display
 
 local before, capture, after
@@ -375,4 +429,5 @@ end
 
 function visualizer.flush_line(str,nested)
    recurse(str)
+   buffer = buffer.."\n"..str
 end
