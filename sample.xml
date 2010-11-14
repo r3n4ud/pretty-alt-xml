@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mainTag SYSTEM "some.dtd" [ENTITY % entity]>
+<?oxygen RNGSchema="some.rng" type="xml"?>
+<mainTag>
+  <!-- This is a sample comment -->
+  <childTag attribute="Quoted Value">
+    <withTextContent>Some text content</withTextContent>
+    <withEntityContent>
+      Some text content with &lt;entities&gt;
+    </withEntityContent>
+    <otherTag attribute='Single quoted Value'invalid_text/>
+  </childTag>
+  <![CDATA[ some CData ]]>
+</mainTag>
