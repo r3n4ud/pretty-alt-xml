@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- That is a 
+
+
+test -->
 <!DOCTYPE mainTag SYSTEM "some.dtd" [ENTITY % entity]>
+<!-- That is a test -->
 <?oxygen RNGSchema="some.rng" type="xml"?>
 <mainTag>
   <!-- This is a sample comment -->
