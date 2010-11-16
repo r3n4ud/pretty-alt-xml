@@ -90,17 +90,68 @@ local xmldecl=(xmldecl_open * versioninfo * attribute *  xmldecl_close)
 local prolog=xmldecl * misc^0 * (doctypedecl * misc^0)^-1
 
 
+local HexChar=R("09","af","AF")
+-- [66] CharRef ::= ('&#' [0-9]+ ';') | ('&#x' [0-9a-fA-F]+ ';')
+local CharRef= (P("&#") * R("09")^1 * P(";")) + (P("&#x") * HexChar^1 * P(";"))
+-- [68]  EntityRef    ::=  '&' Name ';'
+local EntityRef=P("&") * name * P(";")
+-- [69]  PEReference  ::=  '%' Name ';'
+local PEEntityRef=P("%") * name * P(";")
+
+-- [67]  Reference    ::=  EntityRef | CharRef
+local Reference= EntityRef + CharRef
+
+-- [10]         AttValue           ::=          '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
+local AttInnerValue=S("<&")
+local AttValue=(dquote * ((P(1)-AttInnerValue-dquote) + Reference)^0 * dquote) + (squote * ((P(1)-AttInnerValue-squote) + Reference)^0 * squote)
+
+local Attribute=name * equal * AttValue / io.write
+local Tag_attribute=space * Attribute / io.write
+
+
+local ETag=P("</") * name * space^-1 * P(">")
+local STag_close=space^-1 * P(">") /io.write
+local STag_open=P("<") * name / io.write
+local STag= STag_open * Tag_attribute^0 * STag_close
+
+local EmptyElemTag_close=space^0 * P("/>") /io.write
+local EmptyElemTag_open=space^0 * P("<") * name / io.write
+local EmptyElemTag=EmptyElemTag_open * Tag_attribute^0 * EmptyElemTag_close
+
+-- CDATA Sections
+-- [18]         CDSect     ::=           CDStart CData CDEnd
+-- [19]         CDStart    ::=          '<![CDATA['
+-- [20]         CData      ::=          (Char* - (Char* ']]>' Char*))
+-- [21]         CDEnd      ::=          ']]>'
+local CDEnd=P("]]>")
+local CData=(P(1)-P("]]>"))^0
+local CDStart=P("<![CDATA[")
+local CDSect=CDStart * CData * CDEnd -- tested
+
+-- Content of Elements
+-- [43]  content      ::=  CharData? ((element | Reference | CDSect | PI | Comment) CharData?)*
+-- [14]  CharData     ::=  [^<&]* - ([^<&]* ']]>' [^<&]*)
+local CharData=(P(1)-S("<&"))^0 - ( -S("<&")^0 * P("]]>") * -S("<&")^0 )
+
+-- local content=CharData^-1 * ( (element + Reference + CDSect + pi + comment) * CharData^-1 )^0 / io.write --------- work in progress
+
+-- [39] element ::= EmptyElemTag | STag content ETag
+-- local element=EmptyElemTag  + (STag * content * ETag)
+
 -- [1] document        ::=           ( prolog element Misc* ) - ( Char* RestrictedChar Char* )
--- [39] element         ::=      EmptyElemTag | STag content ETag
+
 -- [44] EmptyElemTag       ::=          '<' Name (S Attribute)* S? '/>'
 -- [40]         STag       ::=          '<' Name (S Attribute)* S? '>'  
 -- [41]         Attribute          ::=           Name Eq AttValue
 -- [42]         ETag       ::=          '</' Name S? '>'
--- [43]         content    ::=           CharData? ((element | Reference | CDSect | PI | Comment) CharData?)*
--- [10]         AttValue           ::=          '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
-local xml=P{
-   [1]=prolog -- * V(2),
---   [2]=doctypedecl^0 * comment^0,
+
+
+
+local xml=P {
+   "document";
+   document=prolog * V("element") * misc^0,
+   element=EmptyElemTag  + (STag * V("content") * ETag),
+   content=CharData^-1 * ( (V("element") + Reference + CDSect + pi + comment) * CharData^-1 )^0,
 }
 
 local buffer =""
@@ -115,7 +166,13 @@ while true do
    end
 end
 
+print("−−−−−−−−−−−−−−− MATCH RESULT")
+
 xml:match(buffer)
+
+print("")
+print("−−−−−−−−−−−−−−− MATCH RESULT")
+
 
 -- local lines = {}
 -- -- read the lines in table 'lines'
