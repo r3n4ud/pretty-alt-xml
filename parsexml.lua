@@ -43,8 +43,8 @@ end
 
 local dquote=P('"')
 local squote=P("'")
-local space=S(" \t\n\r")^1
-local equal=space^0 * P("=") * space^0
+local space=S(" \t\n\r")
+local equal=(space^0 * P("=") * space^0)
 --local space=P(" ")
 
 local letter=R("az", "AZ")
@@ -101,18 +101,21 @@ local PEEntityRef=P("%") * name * P(";")
 -- [67]  Reference    ::=  EntityRef | CharRef
 local Reference= EntityRef + CharRef
 
--- [10]         AttValue           ::=          '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
+-- [10] AttValue ::= '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
 local AttInnerValue=S("<&")
-local AttValue=(dquote * ((P(1)-AttInnerValue-dquote) + Reference)^0 * dquote) + (squote * ((P(1)-AttInnerValue-squote) + Reference)^0 * squote)
+local AttDQValue=(dquote * (Reference + (P(1) - AttInnerValue - dquote))^0 * dquote) / io.write -- + (squote * (Reference + (P(1) - AttInnerValue - squote))^0 * squote) / io.write
+local AttSQValue=(squote * (Reference + (P(1) - AttInnerValue - squote))^0 * squote) / io.write -- + (squote * (Reference + (P(1) - AttInnerValue - squote))^0 * squote) / io.write
+local AttValue=AttDQValue + AttSQValue
+-- Problème de capture à régler ↑↑↑↑↑↑
 
 local Attribute=name * equal * AttValue / io.write
-local Tag_attribute=space * Attribute / io.write
+local Tag_attribute=Attribute * space^0 / io.write
 
 
 local ETag=P("</") * name * space^-1 * P(">")
-local STag_close=space^-1 * P(">") /io.write
+local STag_close=space * P(">") /io.write
 local STag_open=P("<") * name / io.write
-local STag= STag_open * Tag_attribute^0 * STag_close
+local STag=STag_open * Tag_attribute^0 * STag_close
 
 local EmptyElemTag_close=space^0 * P("/>") /io.write
 local EmptyElemTag_open=space^0 * P("<") * name / io.write
@@ -146,40 +149,78 @@ local CharData=(P(1)-S("<&"))^0 - ( -S("<&")^0 * P("]]>") * -S("<&")^0 )
 -- [42]         ETag       ::=          '</' Name S? '>'
 
 
-
 local xml=P {
    "document";
-   document=prolog * V("element") * misc^0,
+   document=prolog, --* V("element") * misc^0,
    element=EmptyElemTag  + (STag * V("content") * ETag),
    content=CharData^-1 * ( (V("element") + Reference + CDSect + pi + comment) * CharData^-1 )^0,
 }
 
-local buffer =""
-local count = 1
-while true do
-   local line = io.read()
+print("\nprolog pattern −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−")
+local prolog_test=P { prolog, }
+prolog_test:match([=[<?xml version="1.0" encoding="UTF-8"?>
+<!-- That is a 
 
-   if line==nil then break
-   else
-      print(line)
-      buffer = buffer..'\n'..line
-   end
-end
 
-print("−−−−−−−−−−−−−−− MATCH RESULT")
+test -->
+<!DOCTYPE mainTag SYSTEM "some.dtd" [ENTITY % entity]>
+<!-- That is a test -->
+<?oxygen RNGSchema="some.rng" type="xml"?><?xml version="1.0" encoding="UTF-8"?>
+<!-- That is a 
 
-xml:match(buffer)
+
+test -->
+<!DOCTYPE mainTag SYSTEM "some.dtd" [ENTITY % entity]>
+<!-- That is a test -->
+<?oxygen RNGSchema="some.rng" type="xml"?>]=])
+
+print("\nEmptyElemTag pattern −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−")
+local EmptyElemTag_test=P { EmptyElemTag, }
+EmptyElemTag_test:match("<root_node/>")
+
+print("\nSTag_open pattern −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−")
+local STag_open_test=P { STag_open , }
+assert(STag_open_test:match("<root_node test=\"eanrt\" >"), "check failed")
+
+print("\nAttValue pattern −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−")
+local AttValue_test=P { AttValue , }
+assert(AttValue_test:match("\"ea&lt;nrt\""), "check failed")
+
+print("\nTag_attribute pattern −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−")
+local Tag_attribute_test=P { Tag_attribute , }
+assert(Tag_attribute_test:match("test=\"eanrt\""), "check failed")
+
+
+
+
+
+
+-- print("\ndocument pattern −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−")
+
+-- local buffer=[=[<?xml version="1.0" encoding="UTF-8"?>
+-- <!-- That is a 
+
+
+-- test -->
+-- <!DOCTYPE mainTag SYSTEM "some.dtd" [ENTITY % entity]>
+-- <!-- That is a test -->
+-- <?oxygen RNGSchema="some.rng" type="xml"?>
+-- <mainTag>
+--   <!-- This is a sample comment -->
+--   <childTag attribute="Quoted Value">
+--     <withTextContent>Some text content</withTextContent>
+--     <withEntityContent>
+--       Some text content with &lt;entities&gt;
+--     </withEntityContent>
+--     <otherTag attribute='Single quoted Value'invalid_text/>
+--   </childTag>
+--   <![CDATA[ some CData ]]>
+-- </mainTag>
+-- ]=]
+
+-- xml:match(buffer)
 
 print("")
 print("−−−−−−−−−−−−−−− MATCH RESULT")
 
 
--- local lines = {}
--- -- read the lines in table 'lines'
--- for line in io.lines() do
---    table.insert(lines, line)
--- end
--- -- sort
--- table.sort(lines)
--- -- write all the lines
--- for i, l in ipairs(lines) do io.write(l, "\n") end
