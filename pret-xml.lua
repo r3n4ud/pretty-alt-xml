@@ -1,6 +1,6 @@
 if not modules then modules = { } end modules ['pret-xml'] = {
     version   = 1.001,
-    comment   = "Time-stamp: <2010-11-14 19:54:58>",
+    comment   = "Time-stamp: <2010-11-20 00:20:13>",
     author    = "Renaud Aubin",
     copyright = "Renaud Aubin",
     license   = "see context related readme file"
@@ -40,10 +40,8 @@ local utfcharacters, utfvalues = string.utfcharacters, string.utfvalues
 local utfbyte, utffind = utf.byte, utf.find
 local texwrite = tex.write
 
-
 --local buffers = buffers
 local context = context
-
 
 local color, state, line_number, startText, inText, stopText, startComment, inComment, stopComment, startDoctype, inDoctype, stopDoctype, startQuotedValue, inQuotedValue, stopQuotedValue, startSingleQuotedValue, inSingleQuotedValue, stopSingleQuotedValue, startEntity, inEntity, stopEntity, startTag, inTag, stopTag, startAttributeName, inAttributeName, stopAttributeName, startProcessingInstruction, inProcessingInstruction, stopProcessingInstruction, Equal, Invalid, startCDATA, inCDATA, stopCDATA, startXmlProlog, inXmlProlog, stopXmlProlog
 
@@ -62,54 +60,12 @@ local function finish_color()
 end
 
 local match = string.match
-
 local format = string.format
-
--- function visualizer.reset()
---    state = 0
---    line_number = 0
---    startText = false
---    inText = false
---    stopText = false
---    startComment = false
---    inComment = false
---    stopComment = false
---    startDoctype = false
---    inDoctype = false
---    stopDoctype = false
---    startQuotedValue = false
---    inQuotedValue = false
---    stopQuotedValue = false
---    startSingleQuotedValue = false
---    inSingleQuotedValue = false
---    stopSingleQuotedValue = false
---    startEntity = false
---    inEntity = false
---    stopEntity = false
---    startTag = false
---    inTag = false
---    stopTag = false
---    startAttributeName = false
---    inAttributeName = true
---    stopAttributeName = false
---    startProcessingInstruction = false
---    inProcessingInstruction = false
---    stopProcessingInstruction = false
---    Equal = false
---    Invalid = false
---    startCDATA = false
---    inCDATA = false
---    stopCDATA = false
---    startXmlProlog = false
---    inXmlProlog = false
---    stopXmlProlog = false
--- end
-
-local space = context.obs
+local obsspace = context.obs
 
 local function flush_text(str)
    for c in utfcharacters(str) do
-      if c == " " then space() else texwrite(c) end
+      if c == " " then obsspace() else texwrite(c) end
    end
 end
 
@@ -150,50 +106,225 @@ local buffer = ""
 -- lpeg
 local P, S, V, C, R = lpeg.P, lpeg.S, lpeg.V, lpeg.C, lpeg.R
 
+local function test(colorstr, txt)
+   print("## "..colorstr..": "..txt.."#") 
+   change_color(colorstr)
+   flush_text(txt)
+   finish_color()
+end
+
 local function prolog(txt)
-   print("prolog",'#'..txt..'#')
-   change_color("xmlprolog")
-   flush_text(txt)
-   finish_color()
+   test("xmlprolog", txt)
 end
 
-local function comment(txt)
-   print("comment",'#'..txt..'#')
-   change_color("comment")
-   flush_text(txt)
-   finish_color()
+local function Quoted(txt)
+   test("quoted",txt)
 end
 
-local function doctype(txt)
-   print("doctype",'#'..txt..'#')
+local function Eq(txt)
+   test("text",txt)
 end
 
-local apos=lpeg.P('"')
-local equal=lpeg.P("=")
-local space=P(" ")
-local space=S(" \t\n\r")
+local function AttributeName(txt)
+   test("attribute",txt)
+end
+
+local function Reference(txt)
+   test("entity",txt)
+end
+
+local function Tag(txt)
+   test("tag", txt)
+end
+
+local function Comment(txt)
+   test("comment",txt)
+end
+
+local function CDSect(txt)
+   test("cdata", txt)
+end
+
+local function CharData(txt)
+   test("text", txt)
+end
+
+local function doctypedecl(txt)
+   test("doctype",txt)
+end
+
+local function text(txt)
+   test("text",txt)
+end
+
+local function xmlprolog(txt)
+   test("xmlprolog",txt)
+end
+
+local function pipo(a,b,c)
+   test("attribute",a)
+   test("text",b)
+   test("quoted",c)
+end
+
+
+local function spacefunc(str)
+   print ("str.len = ", string.len(str))
+   if(str=='\n') then
+      print ("EOL detected ")
+      context.doverbatimendofline()
+   else
+      flush_text(str)
+   end
+--   return str
+end
+
+local dquote=P('"')
+local squote=P("'")
+local space=C(S(" \t\n\r")) / spacefunc 
+local equal=space^0 * P("=") * space^0
+
 local letter=R("az", "AZ")
-local namecharstart=letter + '_' + ':'
-local name=namecharstart * (namecharstart + R("09") + P('-'))^0
+local namestartchar=letter + '_' + ':'  -- See http://www.w3.org/TR/xml11/#NT-NameStartChar to complete
+-- should include the following ranges: [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+local namechar=namestartchar + R("09") + '-' + '.'
+-- should include the following ranges: #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
+local name=namestartchar * namechar^0
 
-local comment_open=P("<!--")
-local comment_close=P("-->")
+local attribute=C(space^1 * name) * C(equal) * C((dquote * (P(1) -dquote)^1 * dquote) + (squote * (P(1) -squote)^1 * squote)) / pipo
+-- to delete???
 
---local doctype=(space^0 * P("<!DOCTYPE")) / doctype
-local comment=(space^0 * comment_open * 
-               (P(1) - comment_close)^0 * comment_close) / comment
+local Comment_open=P("<!--")
+local Comment_close=P("-->") * space^0
+local Comment=C(space^0 * Comment_open * (space + P(1) - Comment_close)^0 * Comment_close) / Comment
 
-local prolog=(space^0 * P("<?xml") *
-           (space^1 * name * equal * apos * (P(1) -apos)^1 * apos )^1 * 
-        space^0 * P("?>")) / prolog
+--[16]          PI         ::=          '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
+--[17]          PITarget           ::=           Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
+local xmllabel=S("Xx")*S("Mm")*S("Ll") -- tested
+local PITarget=name - xmllabel --tested
+local PI=P("<?") * PITarget * (space * (P(1) - P("?>"))^0 )^-1 * P("?>") -- tested
+
+-- '<!DOCTYPE' S Name (S ExternalID)? S? ('[' intSubset ']' S?)? '>'
+-- [11]         SystemLiteral      ::=          ('"' [^"]* '"') | ("'" [^']* "'")
+-- [12]         PubidLiteral       ::=          '"' PubidChar* '"' | "'" (PubidChar - "'")* "'"
+-- [13]         PubidChar          ::=          #x20 | #xD | #xA | [a-zA-Z0-9] | [-'()+,./:=?;!*#@$_%]
+-- [75]         ExternalID         ::=          'SYSTEM' S SystemLiteral | 'PUBLIC' S PubidLiteral S SystemLiteral
+local PubidChar=S(" \n\r") + namechar + S("'()+,/=?;!*#@$%")
+local PubidLiteral=(dquote * PubidChar^0 * dquote) + (squote * (PubidChar - P("'"))^0 * squote)
+local SystemLiteral=(dquote * (P(1)-dquote)^0 * dquote) + (squote * (P(1)-squote)^0 * squote)
+local ExternalID=(P("SYSTEM") * space * SystemLiteral) + (P("PUBLIC") * space * PubidLiteral * space * SystemLiteral)
+
+-- Custom HexChar pattern used by CharRef
+local HexChar=R("09","af","AF")
+
+-- [66] CharRef ::= ('&#' [0-9]+ ';') | ('&#x' [0-9a-fA-F]+ ';')
+local CharRef= (P("&#") * R("09")^1 * P(";")) + (P("&#x") * HexChar^1 * P(";"))
+-- [68] EntityRef    ::=  '&' Name ';'
+local EntityRef=P("&") * name * P(";")
+-- [69] PEReference  ::=  '%' Name ';'
+local PEEntityRef=P("%") * name * P(";") -- not used!?
+
+-- [67] Reference ::= EntityRef | CharRef
+local Reference=C(EntityRef + CharRef) / Reference
+
+-- [10] AttValue ::= '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
+local AttInnerValue=S("<&")
+local AttDQValue=(dquote * (Reference + (P(1) - AttInnerValue - dquote))^0 * dquote)
+local AttSQValue=(squote * (Reference + (P(1) - AttInnerValue - squote))^0 * squote)
+
+local AttValue=C(AttDQValue + AttSQValue) / Quoted
+local AttName=C(name) / AttributeName
+
+-- [41] Attribute ::= Name Eq AttValue
+local Attribute=space^1 * AttName * Eq * AttValue
+
+local Tag_attribute=Attribute * space^0 / io.write
+
+-- [42] ETag ::= '</' Name S? '>'
+local ETag=C(space^0 * P("</") * name * space^0 * P(">") * space^0) / Tag
+
+-- [40] STag ::= '<' Name (S Attribute)* S? '>'  
+local STag_close=space^0 * P(">") / Tag
+local STag_open=P("<") * name / Tag
+-- local STag=STag_open * Tag_attribute^0 * STag_close
+local STag=STag_open * attribute^0 * STag_close * space^0
+
+-- [44] EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
+local EmptyElemTag_close=C(space^0 * P("/>")) / Tag
+local EmptyElemTag_open=C(space^0 * P("<") * name) / Tag
+-- local EmptyElemTag=EmptyElemTag_open * Tag_attribute^0 * EmptyElemTag_close
+local EmptyElemTag=EmptyElemTag_open * attribute^0 * EmptyElemTag_close * space^0 
+
+-- [21] CDEnd ::= ']]>'
+local CDEnd=P("]]>")
+-- [20] CData ::= (Char* - (Char* ']]>' Char*))
+local CData=(P(1)-P("]]>"))^0
+-- [19] CDStart ::= '<![CDATA['
+local CDStart=P("<![CDATA[")
+-- [18] CDSect ::=  CDStart CData CDEnd
+local CDSect=C(CDStart * CData * CDEnd) / CDSect -- tested
+
+-- [14] CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
+local CharData=C((P(1)-S("<&"))^0 - ( -S("<&")^0 * P("]]>") * -S("<&")^0 )) / CharData
+
+-- [25] Eq ::=  S? '=' S?
+-- [26] VersionNum ::='1.1'
+-- [27] Misc ::= Comment | PI | S
 
 
-local xml=P{
-   [1]=prolog^0 * V(2), --* doctype^0 * V(2),
-   [2]=(comment^1 + P(1)^1)^0,
+
+
+--------------------------------------------------------------------------------
+
+local Quoted=(dquote * (P(1) -dquote)^1 * dquote) + (squote * (P(1) - squote)^1 * squote)
+
+local Eq=space^0 * P("=") * space^0
+
+local VersionName=P("version")
+
+-- [24] VersionInfo ::= S 'version' Eq ("'" VersionNum "'" | '"' VersionNum '"')
+local VersionInfo=C(VersionName) * C(Eq) * C(Quoted) / pipo
+
+--------------------------------------------------------------------------------
+-- [28] doctypedecl ::= '<!DOCTYPE' S Name (S ExternalID)? S? ('[' intSubset ']' S?)? '>'
+local doctypedecl=C(P("<!DOCTYPE") * space * name * (space * ExternalID)^-1 * space^-1 * (P("[") * (P(1) -P("]"))^1 * P("]") * space^-1)^-1 * P(">") * space^0) / doctypedecl -- intSubset has been simplified
+
+-- [27] Misc ::= Comment | PI | S
+local MiscSpace = C(space) / text
+local Misc=Comment + PI + MiscSpace
+
+-- [23] XMLDecl ::='<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
+-- TODO Make specific patterns for EncodingDecl SDdecl
+local XMLDecl_open=C(space^0 * P("<?xml") * space^1) / xmlprolog
+local XMLDecl_close=C(space^0 * P("?>")) / xmlprolog
+local XMLDecl=XMLDecl_open * VersionInfo * attribute^0 *  XMLDecl_close * space^0 -- space^0 must be at the end of the line for spacefunc efficiency
+
+--------------------------------------------------------------------------------
+-- [22] prolog ::= XMLDecl Misc* (doctypedecl Misc*)?
+local prolog=XMLDecl * Misc^0 * (doctypedecl * Misc^0)^-1
+
+-- [43] content ::= CharData? ((element | Reference | CDSect | PI | Comment) CharData?)*
+-- [39] element ::= EmptyElemTag | STag content ETag
+-- [1] document ::= ( prolog element Misc* ) - ( Char* RestrictedChar Char* )
+local xml=P {
+   "document";
+   document=prolog * V("element") * Misc^0,
+   element=EmptyElemTag + (STag * V("content")), --* ETag),
+   content= space^0 * CharData * space^0 * (V("element") + Comment)^0 * CharData,
+--   content=CharData^-1 * ( (V("element") + Reference + CDSect + PI + Comment) * CharData^-1 )^0,
 }
 
--- Hooks
+
+
+
+
+
+
+-- Hooks --
+function visualizer.empty_line() end
+
+function visualizer.end_of_line() end
+
 function visualizer.begin_of_display()
    color_init()
 end
@@ -428,6 +559,10 @@ local function recurse(str)
 end
 
 function visualizer.flush_line(str,nested)
-   recurse(str)
+--   recurse(str)
+   print(str)
    buffer = buffer.."\n"..str
 end
+
+
+--- WARNING A NEW LINE IS ADDED SOMEHOW BY THE CURRENT LPEG PROCESSING
