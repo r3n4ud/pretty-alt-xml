@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"  ?>
 <!-- That is a 
 
 
@@ -6,14 +6,15 @@ test -->
 <!DOCTYPE mainTag SYSTEM "some.dtd" [ENTITY % entity]>
 <!-- That is a test -->
 <?oxygen RNGSchema="some.rng" type="xml"?>
+
 <mainTag>
   <!-- This is a sample comment -->
-  <childTag attribute="Quoted Value">
+  <childTag attribute="Quoted Value" other="test">
     <withTextContent>Some text content</withTextContent>
     <withEntityContent>
       Some text content with &lt;entities&gt;
     </withEntityContent>
-    <otherTag attribute='Single quoted Value'invalid_text/>
+    <otherTag attribute='Single quoted Value'/>
   </childTag>
   <![CDATA[ some CData ]]>
 </mainTag>
