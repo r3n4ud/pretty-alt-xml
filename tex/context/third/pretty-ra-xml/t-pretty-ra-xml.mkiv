@@ -1,0 +1,88 @@
+%C Copyright 2010 Renaud Aubin <renaud.aubin@gmail.com>
+%C Time-stamp: <2010-12-18 23:14:58>
+%C This program is free software: you can redistribute it and/or modify
+%C it under the terms of the GNU General Public License as published by
+%C the Free Software Foundation, either version 3 of the License, or
+%C (at your option) any later version.
+%C
+%C This program is distributed in the hope that it will be useful,
+%C but WITHOUT ANY WARRANTY; without even the implied warranty of
+%C MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%C GNU General Public License for more details.
+%C
+%C You should have received a copy of the GNU General Public License
+%C along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%C
+%D \module
+%D   [       file=t-pretty-ra-xml,
+%D        version=0.1,
+%D          title=XML Pretty Printer for the \CONTEXT\ Macro package,
+%D         author=Renaud Aubin,
+%D           date=\currentdate,
+%D      copyright=2010 Renaud Aubin]
+
+\registerctxluafile{t-pretty-ra-xml.lua}{0.1}
+
+\unprotect
+
+\setupcolor[ema]
+
+\definestartstop
+    [RaXmlSnippet]
+    [DefaultSnippet]
+
+\definestartstop
+  [RaXmlSnippetProlog]
+  [\c!color=blueviolet,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetQuoted]
+  [\c!color=darkorange4,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetEq]
+  [\c!color=black,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetAttName]
+  [\c!color=tan2,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetReference]
+  [\c!color=yellow4,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetTag]
+  [\c!color=darkblue,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetComment]
+  [\c!color=darkgreen,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetCDSect]
+  [\c!color=green4,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetCharData]
+  [\c!color=black,
+   \c!style=boldface]
+
+\definestartstop
+  [RaXmlSnippetDoctypeDecl]
+  [\c!color=blue,
+   \c!style=boldface]
+
+\definetyping
+    [RAXML]
+    [\c!option=raxml]
+
+\protect \endinput
