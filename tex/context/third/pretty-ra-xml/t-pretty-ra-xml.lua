@@ -1,5 +1,5 @@
 -- Copyright 2010 Renaud Aubin <renaud.aubin@gmail.com>
--- Time-stamp: <2010-12-18 23:15:27>
+-- Time-stamp: <2010-12-19 02:24:08>
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -32,6 +32,7 @@ local startRaXmlSnippet    = context.startRaXmlSnippet
 local stopRaXmlSnippet     = context.stopRaXmlSnippet
 
 local RaXmlSnippetProlog      = verbatim.RaXmlSnippetProlog
+local RaXmlSnippetNSPref      = verbatim.RaXmlSnippetNSPref
 local RaXmlSnippetQuoted      = verbatim.RaXmlSnippetQuoted
 local RaXmlSnippetEq          = verbatim.RaXmlSnippetEq
 local RaXmlSnippetAttName     = verbatim.RaXmlSnippetAttName
@@ -48,6 +49,7 @@ local handler = visualizers.newhandler {
    startdisplay = function() startRaXmlSnippet() end,
    stopdisplay  = function() stopRaXmlSnippet () end,   
    prolog       = function(s) RaXmlSnippetProlog(s) end,
+   nspref       = function(s) RaXmlSnippetNSPref(s) end,
    quoted       = function(s) RaXmlSnippetQuoted(s) end,
    eq           = function(s) RaXmlSnippetEq(s) end,
    attname      = function(s) RaXmlSnippetAttName(s) end,
@@ -69,11 +71,12 @@ local handler = visualizers.newhandler {
 local dquote=P('"')
 local squote=P("'")
 local letter=R("az", "AZ")
-local namestartchar=letter + '_' + ':'  -- See http://www.w3.org/TR/xml11/#NT-NameStartChar to complete
+local namestartchar=letter + '_' --+ ':'  -- See http://www.w3.org/TR/xml11/#NT-NameStartChar to complete
 -- should include the following ranges: [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 local namechar=namestartchar + R("09") + '-' + '.'
 -- should include the following ranges: #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 local name=namestartchar * namechar^0
+local NCName=name - P(":")
 
 -- [15] Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
 local Comment_open=P("<!--")
@@ -190,21 +193,28 @@ local grammar = visualizers.newgrammar(
      * V("SQAttValue_content")^0 * makepattern(handler, "quoted", squote)),
 
      -- [41] Attribute ::= Name Eq AttValue
-     Attribute = makepattern(handler,"attname",name)
+     Attribute = makepattern(handler, "nspref", NCName * P(":"))^-1
+     * (makepattern(handler,"nspref", P("xmlns")) + makepattern(handler,"attname", NCName))
      * V("Eq")
      * V("AttValue"),
 
      -- [40] STag ::= '<' Name (S Attribute)* S? '>'  
-     STag = makepattern(handler, "tag", P("<") * name)
+     STag = makepattern(handler, "tag", P("<"))
+     * makepattern(handler, "nspref", NCName * P(":"))^-1
+     * makepattern(handler, "tag", NCName)
      * (V("whitespace") * V("Attribute"))^0 * V("optionalwhitespace")
      * makepattern(handler, "tag", P(">")),
 
      -- [42] ETag ::= '</' Name S? '>'
-     ETag = makepattern(handler, "tag", P("</") * name)
+     ETag = makepattern(handler, "tag", P("</"))
+     * makepattern(handler, "nspref", NCName * P(":"))^-1
+     * makepattern(handler, "tag", NCName)
      * V("optionalwhitespace") * makepattern(handler, "tag", P(">")),
 
      -- [44] EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
-     EmptyElemTag = makepattern(handler, "tag", P("<") * name)
+     EmptyElemTag = makepattern(handler, "tag", P("<"))
+     * makepattern(handler, "nspref", NCName * P(":"))^-1
+     * makepattern(handler, "tag", NCName)
      * (V("whitespace") * V("Attribute"))^0 * V("optionalwhitespace")
      * makepattern(handler, "tag", P("/>")),
 
@@ -257,7 +267,7 @@ local grammar = visualizers.newgrammar(
 
      -- [22] prolog ::= XMLDecl Misc* (doctypedecl Misc*)?
      prolog =  V("XMLDecl") * V("Misc")^0
-     * (V("doctypedecl") * V("Misc")^0),
+     * (V("doctypedecl") * V("Misc")^0)^-1,
 
      -- [1] document ::= ( prolog element Misc* ) - ( Char* RestrictedChar Char* )
      document=V("prolog") * V("element") * V("Misc")^0,
