@@ -1,5 +1,5 @@
 -- Copyright 2010 Renaud Aubin <renaud.aubin@gmail.com>
--- Time-stamp: <2010-12-19 02:24:08>
+-- Time-stamp: <2010-12-21 00:19:54>
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -273,7 +273,7 @@ local grammar = visualizers.newgrammar(
      document=V("prolog") * V("element") * V("Misc")^0,
 
      pattern = V("document") + V("default"),
-     visualizer = V("pattern")^1 
+     visualizer = V("pattern")^-1
 
   }
 )
